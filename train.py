@@ -1,40 +1,32 @@
+import collections
 import logging
 import math
 import os
+import random
 import sys
 from dataclasses import dataclass, field
-from typing import Optional, Union, List, Dict, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
 import torch
-import collections
-import random
-
-from datasets import load_dataset
-
 import transformers
-from transformers import (
-    CONFIG_MAPPING,
-    MODEL_FOR_MASKED_LM_MAPPING,
-    AutoConfig,
-    AutoModelForMaskedLM,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    DataCollatorForLanguageModeling,
-    DataCollatorWithPadding,
-    HfArgumentParser,
-    Trainer,
-    TrainingArguments,
-    default_data_collator,
-    set_seed,
-    EvalPrediction,
-    BertModel,
-    BertForPreTraining,
-    RobertaModel
-)
-from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy, PreTrainedTokenizerBase
-from transformers.trainer_utils import is_main_process
+from datasets import load_dataset
+from transformers import (CONFIG_MAPPING, MODEL_FOR_MASKED_LM_MAPPING,
+                          AutoConfig, AutoModelForMaskedLM,
+                          AutoModelForSequenceClassification, AutoTokenizer,
+                          BertForPreTraining, BertModel,
+                          DataCollatorForLanguageModeling,
+                          DataCollatorWithPadding, EvalPrediction,
+                          HfArgumentParser, RobertaModel, Trainer,
+                          TrainingArguments, default_data_collator, set_seed)
 from transformers.data.data_collator import DataCollatorForLanguageModeling
-from transformers.file_utils import cached_property, torch_required, is_torch_available, is_torch_tpu_available
-from simcse.models import RobertaForCL, BertForCL
+from transformers.file_utils import (cached_property, is_torch_available,
+                                     is_torch_tpu_available, torch_required)
+from transformers.tokenization_utils_base import (BatchEncoding,
+                                                  PaddingStrategy,
+                                                  PreTrainedTokenizerBase)
+from transformers.trainer_utils import is_main_process
+
+from simcse.models import BertForCL, RobertaForCL
 from simcse.trainers import CLTrainer
 
 logger = logging.getLogger(__name__)
@@ -322,6 +314,8 @@ def main():
         "cache_dir": model_args.cache_dir,
         "revision": model_args.model_revision,
         "use_auth_token": True if model_args.use_auth_token else None,
+        "hidden_dropout_prob": 0.0,
+        "attention_probs_dropout_prob": 0.0
     }
     if model_args.config_name:
         config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)

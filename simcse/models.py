@@ -1,20 +1,22 @@
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.distributed as dist
-
 import transformers
 from transformers import RobertaTokenizer
-from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaModel, RobertaLMHead
-from transformers.models.bert.modeling_bert import BertPreTrainedModel, BertModel, BertLMPredictionHead
 from transformers.activations import gelu
-from transformers.file_utils import (
-    add_code_sample_docstrings,
-    add_start_docstrings,
-    add_start_docstrings_to_model_forward,
-    replace_return_docstrings,
-)
-from transformers.modeling_outputs import SequenceClassifierOutput, BaseModelOutputWithPoolingAndCrossAttentions
+from transformers.file_utils import (add_code_sample_docstrings,
+                                     add_start_docstrings,
+                                     add_start_docstrings_to_model_forward,
+                                     replace_return_docstrings)
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPoolingAndCrossAttentions, SequenceClassifierOutput)
+from transformers.models.bert.modeling_bert import (BertLMPredictionHead,
+                                                    BertModel,
+                                                    BertPreTrainedModel)
+from transformers.models.roberta.modeling_roberta import (
+    RobertaLMHead, RobertaModel, RobertaPreTrainedModel)
+
 
 class MLPLayer(nn.Module):
     """
@@ -83,6 +85,18 @@ class Pooler(nn.Module):
             raise NotImplementedError
 
 
+class GaussianNoise(nn.Module):
+    def __init__(self, stddev):
+        super().__init__()
+        self.stddev = stddev
+
+    def forward(self, x):
+        if self.training:
+            noise = torch.randn_like(x) * self.stddev
+            return x + noise
+        return x
+
+
 def cl_init(cls, config):
     """
     Contrastive learning class init function.
@@ -93,6 +107,9 @@ def cl_init(cls, config):
         cls.mlp = MLPLayer(config)
     cls.sim = Similarity(temp=cls.model_args.temp)
     cls.init_weights()
+    # gaussian noise
+    cls.add_noise = GaussianNoise(stddev=0.1)
+
 
 def cl_forward(cls,
     encoder,
@@ -162,10 +179,14 @@ def cl_forward(cls,
 
     # Separate representation
     z1, z2 = pooler_output[:,0], pooler_output[:,1]
+    # add noise
+    z1 = cls.add_noise(z1)
+    z2 = cls.add_noise(z2)
 
     # Hard negative
     if num_sent == 3:
         z3 = pooler_output[:, 2]
+        z3 = cls.add_noise(z3)
 
     # Gather all embeddings if using distributed training
     if dist.is_initialized() and cls.training:
