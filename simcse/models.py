@@ -108,7 +108,7 @@ def cl_init(cls, config):
     cls.sim = Similarity(temp=cls.model_args.temp)
     cls.init_weights()
     # gaussian noise
-    cls.add_noise = GaussianNoise(stddev=0.1)
+    cls.add_noise = GaussianNoise(stddev=0.001)
 
 
 def cl_forward(cls,
